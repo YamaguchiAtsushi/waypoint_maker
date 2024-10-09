@@ -5,6 +5,7 @@
 #include <visualization_msgs/Marker.h>
 #include <fstream>
 #include <iostream>
+#include <cmath>  // atan2関数のため
 
 class WaypointMaker {
 public:
@@ -44,7 +45,7 @@ public:
                 saveWaypointToCSV(current_pose_);
 
                 // Rviz用のマーカーをパブリッシュ
-                visualization_msgs::Marker marker = createWaypointMarker(waypoint_id_++, current_pose_);
+                visualization_msgs::Marker marker = createArrowMarker(waypoint_id_++, current_pose_);
                 marker_pub_.publish(marker);
 
                 // 保存フラグをリセット
@@ -95,38 +96,19 @@ private:
     void saveWaypointToCSV(const geometry_msgs::Pose& pose) {
         std::ofstream file(csv_file_path_, std::ios::app);
         if (file.is_open()) {
-            file << pose.position.x << "," << pose.position.y << "," 
-                 << pose.orientation.z << "," << pose.orientation.w << "\n";
+            // 四元数からヨー角を計算
+            double yaw = atan2(2.0 * (pose.orientation.w * pose.orientation.z), 1.0 - 2.0 * (pose.orientation.z * pose.orientation.z));
+            
+            // x, y, yawをCSVに書き込む
+            file << pose.position.x << "," << pose.position.y << "," << yaw << "\n";
             file.close();
-            ROS_INFO("ウェイポイントを保存しました: [%f, %f]", pose.position.x, pose.position.y);
+            ROS_INFO("ウェイポイントを保存しました: [%f, %f, %f]", pose.position.x, pose.position.y, yaw);
         } else {
             ROS_ERROR("CSVファイルを開けませんでした");
         }
     }
 
-    // Rviz用のマーカーを作成
-    //球体
-    // visualization_msgs::Marker createWaypointMarker(int id, const geometry_msgs::Pose& pose) {
-    //     visualization_msgs::Marker marker;
-    //     marker.header.frame_id = "map";  // 使用する座標系を指定
-    //     marker.header.stamp = ros::Time::now();
-    //     marker.ns = "waypoints";
-    //     marker.id = id;
-    //     marker.type = visualization_msgs::Marker::SPHERE;
-    //     marker.action = visualization_msgs::Marker::ADD;
-    //     marker.pose = pose;
-    //     marker.scale.x = 0.2;
-    //     marker.scale.y = 0.2;
-    //     marker.scale.z = 0.2;
-    //     marker.color.r = 1.0;
-    //     marker.color.g = 0.0;
-    //     marker.color.b = 0.0;
-    //     marker.color.a = 1.0;
-    //     return marker;
-    // }
-
-    // Rviz用のマーカーを作成
-    //矢印
+    // Rviz用の矢印マーカーを作成
     visualization_msgs::Marker createArrowMarker(int id, const geometry_msgs::Pose& pose) {
         visualization_msgs::Marker marker;
         marker.header.frame_id = "map";  // 使用する座標系を指定
@@ -142,7 +124,7 @@ private:
         marker.scale.y = 0.1;  // 矢印の幅
         marker.scale.z = 0.0;  // 矢印の高さ
 
-        // 矢印の色を設定 (緑色の矢印)
+        // 矢印の色を設定 (赤色の矢印)
         marker.color.r = 1.0;
         marker.color.g = 0.0;
         marker.color.b = 0.0;
